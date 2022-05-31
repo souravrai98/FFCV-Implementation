@@ -1,0 +1,34 @@
+{
+    "experiment_number": 993,
+    "dataset": "CIFAR", 
+    "architecture": "ResNet18", 
+    "batch_size": 128, 
+    "optimizer": 9, 
+    "lr": 0.1, 
+    "momentum": 0.5,
+    "weight_decay": 0.0,
+    "radius": 2, 
+    "projected": 1, 
+    "epochs": 12, 
+    "beta":5,
+    "tb_path_test": "/home/sourav/Lottery-Main/cf/test",
+    "tb_path_train": "/home/sourav/Lottery-Main/cf/train",
+    
+    "batch_statistics_freq": 100,
+    "dump_movement": 0,
+    "gamma0":1,
+    "random_seed": 0,
+    
+    "e_stop":0,
+    "epoch_for_estop":0,
+    
+    "one_shot_prune":0,
+    "perc_to_prune":0.80,
+    "step_of_prune":0,
+    "prune_epoch":60,
+    
+    "iterative_prune":0,
+    "unfreeze_epoch":90,
+    "epochs_to_finetune":30,
+    "epochs_to_densetrain":50
+}
