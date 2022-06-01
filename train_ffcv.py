@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import numpy as np
-
+from torch.utils.tensorboard import SummaryWriter
 
 from typing import List
 import time
@@ -43,11 +43,21 @@ from src.utils import *
 
 from CustomOptimizer import *
 
+def tb_dump(epoch, net,loaders, writer1,writer2):
+    """ Routine for dumping info on tensor board at the end of an epoch """
+    print('=> eval on test data')
+    (test_loss, test_acc, _) = evaluate(net,loaders,'test')
+    writer1.add_scalar('Loss/test', test_loss, epoch)
+    writer1.add_scalar('Accuracy', test_acc, epoch)
 
+    print('=> eval on train data')
+    (train_loss, train_acc, _) = evaluate(net,loaders,'train')
+    writer2.add_scalar('Loss/train', train_loss, epoch)
+    writer2.add_scalar('Accuracy', train_acc, epoch)
+    print('epoch %d done\n' % (epoch))
 
-def train(model, loaders, lr=None, epochs=None, 
-          momentum=None, weight_decay=None, lr_peak_epoch=None):
-    opt = SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+def train(model, loaders,epochs,optimizer,lr_peak_epoch):
+    opt = optimizer
     iters_per_epoch = len(loaders['train'])
     # Cyclic LR with single triangle
     lr_schedule = np.interp(np.arange((epochs+1) * iters_per_epoch),
@@ -55,25 +65,49 @@ def train(model, loaders, lr=None, epochs=None,
                             [0, 1, 0])
     scheduler = lr_scheduler.LambdaLR(opt, lr_schedule.__getitem__)
     scaler = GradScaler()
-    loss_fn = CrossEntropyLoss()
+    
+    writer1 = SummaryWriter(config_tb_path_train)
+    writer2 = SummaryWriter(config_tb_path_test)
+      
+    for epoch in range(epochs):
 
-    for _ in range(epochs):
-        for ims, labs in tqdm(loaders['train']):
-            opt.zero_grad(set_to_none=True)
-            with autocast():
-                out = model(ims)
-                loss = loss_fn(out, labs)
+        model.train()
+        with tqdm(loaders['train'], unit="batch") as tepoch:  
+        
+            
+            for ims, labs in tepoch:
+                tepoch.set_description(f"Epoch {epoch}")
+                opt.zero_grad(set_to_none=True)
+        
+                with autocast():
+        
+                    out = model(ims)
+        
+                    loss = criterion(out, labs)
 
-            scaler.scale(loss).backward()
-            scaler.step(opt)
-            scaler.update()
-            scheduler.step()
+        
+                scaler.scale(loss).backward()
+        
+                scaler.step(opt)
+        
+                scaler.update()
+        
+                scheduler.step()
+
+                tepoch.set_postfix(loss=loss.item())
+        tb_dump(epoch,model,loaders,writer1,writer2)
+
+    print('Finished Training')
+    writer2.close()
+    writer1.close()
 
 
-def evaluate(model, loaders):
+def evaluate(model, loaders,name):
     model.eval()
+    
     with ch.no_grad():
-        for name in ['train', 'test']:
+        
+        if name == 'train'  :  
             total_correct, total_num = 0., 0.
             for ims, labs in tqdm(loaders[name]):
                 with autocast():
@@ -81,7 +115,19 @@ def evaluate(model, loaders):
                     
                     total_correct += out.argmax(1).eq(labs).sum().cpu().item()
                     total_num += ims.shape[0]
-            print(f'{name} accuracy: {total_correct / total_num * 100:.1f}%')
+            print(f'{name} Accuracy, {total_correct / total_num * 100:.1f}%, {name} Loss, {100 - (total_correct / total_num * 100):.2f}')
+        else: 
+            total_correct, total_num = 0., 0.      
+            for ims, labs in tqdm(loaders[name]):
+                with autocast():
+                    out = model(ims)
+                    
+                    total_correct += out.argmax(1).eq(labs).sum().cpu().item()
+                    total_num += ims.shape[0]
+            print(f'{name} Accuracy, {total_correct / total_num * 100:.1f}%, {name} Loss, {100 - (total_correct / total_num * 100):.2f}')
+ 
+    return (100 - (total_correct / total_num * 100), total_correct / total_num * 100, total_num)
+    
 
 
 # ################
@@ -125,6 +171,9 @@ config_epochs_to_densetrain = config["epochs_to_densetrain"]
 #config_initial_accumulator_value = config['initial_accumulator_value']
 config_beta = config['beta']
 #config_eps = config['eps']
+config_train_dataset = config["train_dataset"]
+config_test_dataset = config["test_dataset"]
+
 
 
 use_cuda = torch.cuda.is_available()
@@ -190,11 +239,11 @@ net.apply(weights_init_uniform_rule)
 
 
 
-loaders, start_time = make_dataloaders("/home/sourav/FFCV/train.beton","/home/sourav/FFCV/test.beton",
+loaders, start_time = make_dataloaders(config_train_dataset,config_test_dataset,
 batch_size = config_batch_size,num_workers= 8)
 
 train(
-    net, loaders, lr=config_lr, epochs=config_epochs,
-          momentum=config_momentum, weight_decay=config_weight_decay, lr_peak_epoch=config_beta)
+    net, loaders, epochs=config_epochs,
+          optimizer = optimizer,lr_peak_epoch=config_beta)
 print(f'Total time: {time.time() - start_time:.5f}')
-evaluate(net, loaders)
+#evaluate(net, loaders)
