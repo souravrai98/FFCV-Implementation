@@ -3,25 +3,21 @@ from typing import List
 import time
 import numpy as np
 from tqdm import tqdm
-
+import json
 import torch as ch
 import torchvision
-
+import argparse
 from fastargs import get_current_config
 from fastargs.decorators import param
 from fastargs import Param, Section
 from fastargs.validation import And, OneOf
 
 from ffcv.writer import DatasetWriter
+from ffcv.fields import IntField 
+
 from ffcv.fields import IntField, RGBImageField
 
-Section('data', 'arguments to give the writer').params(
-    train_dataset=Param(str, 'Where to write the new dataset', required=True),
-    val_dataset=Param(str, 'Where to write the new dataset', required=True),
-)
 
-@param('data.train_dataset')
-@param('data.val_dataset')
 def main(train_dataset, val_dataset):
     datasets = {
         'train': torchvision.datasets.CIFAR10('/home/sourav', train=True, download=True),
@@ -38,11 +34,16 @@ def main(train_dataset, val_dataset):
 
 
 if __name__ == "__main__":
-    config = get_current_config()
-    parser = ArgumentParser(description='Fast CIFAR-10 training')
-    config.augment_argparse(parser)
-    config.collect_argparse_args(parser)
-    config.validate(mode='stderr')
-    config.summary()
+    parser = argparse.ArgumentParser(description='PyTorch Training')
+    parser.add_argument(
+    '--config', default='config.json', type=str, help='config file')
+    parser.add_argument('--resume', '-r', action='store_true',
+                    help='resume from checkpoint')
+    args = parser.parse_args()
 
-    main()
+    with open(args.config) as config_file:
+        config = json.load(config_file)
+    config_train_dataset = config['train_dataset']
+    config_test_dataset = config['test_dataset']
+
+    main(config_train_dataset,config_test_dataset)

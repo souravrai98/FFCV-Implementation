@@ -23,6 +23,7 @@ from torch.nn import CrossEntropyLoss, Conv2d, BatchNorm2d
 from torch.optim import SGD, lr_scheduler
 import torchvision
 
+
 from fastargs import get_current_config, Param, Section
 from fastargs.decorators import param
 from fastargs.validation import And, OneOf
@@ -35,13 +36,16 @@ from ffcv.transforms import RandomHorizontalFlip, Cutout, \
     RandomTranslate, Convert, ToDevice, ToTensor, ToTorchImage
 from ffcv.transforms.common import Squeeze
 from ffcv.writer import DatasetWriter
+
 from src.models import MODELS_MAP
 from loader import *
 from src.utils import *
 
 from CustomOptimizer import *
 
-def train(model, loaders, lr=None, epochs=None, label_smoothing=None,
+
+
+def train(model, loaders, lr=None, epochs=None, 
           momentum=None, weight_decay=None, lr_peak_epoch=None):
     opt = SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
     iters_per_epoch = len(loaders['train'])
@@ -127,7 +131,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 model = MODELS_MAP[config_architecture]()
-net = model.to(device)
+net = model.to(memory_format=ch.channels_last).cuda()
 criterion = nn.CrossEntropyLoss()
 
 if config_optimizer == 0:
@@ -184,7 +188,9 @@ net.apply(weights_init_uniform_rule)
 #ckp_path = 'checkpoints/epoch_model_40.pth'
 #checkpoint_model, start_epoch = load_ckp(ckp_path, net)
 
-loaders, start_time = make_dataloaders("/home/sourav/FFCV-Loader/train.beton","/home/sourav/FFCV-Loader/test.beton",
+
+
+loaders, start_time = make_dataloaders("/home/sourav/FFCV/train.beton","/home/sourav/FFCV/test.beton",
 batch_size = config_batch_size,num_workers= 8)
 
 train(
