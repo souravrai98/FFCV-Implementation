@@ -3,7 +3,7 @@
     "dataset": "CIFAR", 
     "architecture": "ResNet18", 
     "batch_size": 512, 
-    "optimizer": 1, 
+    "optimizer": 9, 
     "lr": 0.1, 
     "momentum": 0.9,
     "weight_decay": 0.0,
@@ -22,8 +22,7 @@
     "gamma0":1,
     "random_seed": 0,
     
-    "e_stop":0,
-    "epoch_for_estop":0,
+   
     
     "one_shot_prune":0,
     "perc_to_prune":0.80,

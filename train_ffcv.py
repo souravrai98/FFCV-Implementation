@@ -162,8 +162,7 @@ config_weight_decay = config['weight_decay']
 config_radius = config['radius']
 config_random_seed = config['random_seed']
 config_gamma0 = config['gamma0']
-config_e_stop = config["e_stop"]
-config_epoch_for_estop = config["epoch_for_estop"]
+
 config_one_shot_prune = config["one_shot_prune"]
 config_iterative_prune = config["iterative_prune"]
 config_epochs_to_finetune = config["epochs_to_finetune"]
@@ -174,11 +173,10 @@ config_beta = config['beta']
 config_train_dataset = config["train_dataset"]
 config_test_dataset = config["test_dataset"]
 
+loaders, start_time = make_dataloaders(config_train_dataset,config_test_dataset,
+batch_size = config_batch_size,num_workers= 8)
 
 
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
 model = MODELS_MAP[config_architecture]()
 net = model.to(memory_format=ch.channels_last).cuda()
 criterion = nn.CrossEntropyLoss()
@@ -220,7 +218,22 @@ elif config_optimizer == 8:
         initial_accumulator_value=config_initial_accumulator_value,
         eps=config_eps)
 
+elif config_optimizer == 9:
+    optimizer = CustomOptimizer(net.parameters(),lr=config_lr, 
+    momentum=config_momentum,
+    weight_decay=config_weight_decay,
+    len_step = len(loaders['train']),
+    
+    one_shot_prune  = config_one_shot_prune,
+    prune_epoch=config_prune_epoch,
+    step_of_prune=config_step_of_prune,
+    perc_to_prune = config_perc_to_prune,
 
+    iterative_prune = config_iterative_prune,
+    unfreeze_epoch=config_unfreeze_epoch,
+    epochs_to_densetrain = config_epochs_to_densetrain,
+    epochs_to_finetune= config_epochs_to_finetune
+   )
 
 # Writer path for display on TensorBoard
 if not os.path.exists(config_tb_path_test):
@@ -239,8 +252,7 @@ net.apply(weights_init_uniform_rule)
 
 
 
-loaders, start_time = make_dataloaders(config_train_dataset,config_test_dataset,
-batch_size = config_batch_size,num_workers= 8)
+
 
 train(
     net, loaders, epochs=config_epochs,
